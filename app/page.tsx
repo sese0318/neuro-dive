@@ -147,6 +147,7 @@ export default function Home(){
  return <div className="app-shell">
  <header className="topbar"><button className="brand brand-button" onClick={()=>{clean();setPhase('home');}} aria-label="Neuro Arcade ホーム"><span className="brand-mark">✳</span><span>NEURO<span className="brand-light">ARCADE</span><small>BY NEUROLAB</small></span></button><div className="header-right"><span className="session-chip"><i/> 学びの回路、接続中</span><button className={'sound-toggle '+(sound?'on':'')} onClick={()=>setSound(v=>!v)} aria-pressed={sound} aria-label="効果音">{sound?'♪ 音あり':'♪ 音なし'}</button><span className="score-label">✧ {stats.xp+runXP} XP</span></div></header>
  <main>
+ <a className="dive-entry" href="/dive"><span>FIRST-PERSON 3D</span><strong>脳内を歩いて探検する</strong><span>NEURO DIVE ↗</span></a>
  <div className="page-heading"><div><p className="eyebrow">A SMALL ADVENTURE INSIDE YOUR HEAD</p><h1>脳の中へ、<span>冒険しよう。</span></h1></div><p>{stats.played>0?'クリア '+stats.played+'回 · 今日もひとつ、つなごう。':'1回3分。遊んで、つないで、覚える。'}</p></div>
  {gameActive&&<div className="runbar"><button className="text-button" onClick={()=>{clean();setPhase('home');}}>← スタート画面へ</button><span>{config.title}</span><span className="accent">{combo>1?combo+'連続接続 · ':''}{runXP} XP</span></div>}
  <div className={'workspace '+(mode==='pairs'?'pairs-workspace ':'')+(gameActive?'is-playing':'')}>
