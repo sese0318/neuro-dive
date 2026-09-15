@@ -11,6 +11,7 @@ export class DiveEngine {
  abort=new AbortController();resize:ResizeObserver;
  objects=new Map<string,THREE.Object3D>();animated:THREE.Object3D[]=[];
  brains:THREE.Group[]=[];brainLoaded=false;
+ guideMarker:THREE.Sprite|null=null;signalWave:THREE.Mesh|null=null;signalParticles:THREE.Mesh[]=[];
  drag:{x:number;y:number}|null=null;
  command:{forward:number;strafe:number;jump:boolean;end:number;resolve:(state:DiveSnapshot)=>void}|null=null;
  audio:AudioContext|null=null;sound=false;lastScore=0;lastStage='input';light:THREE.PointLight;
@@ -127,6 +128,12 @@ export class DiveEngine {
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
   this.scene.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0xb2e8d8,size:.055,transparent:true,opacity:.6,depthWrite:false})));
   this.camera.position.set(0,1.65,15);
+  this.guideMarker=this.label('▼ 次の観察ポイント','#e5ffb0',3.5);this.scene.add(this.guideMarker);
+  this.signalWave=this.ring(0,1.4,-10,1.2,0xd5f3a3);
+  const particleGeometry=new THREE.SphereGeometry(.09,8,6);
+  const calciumMaterial=new THREE.MeshBasicMaterial({color:0x94caf7});
+  const transmitterMaterial=new THREE.MeshBasicMaterial({color:0xffb9da});
+  for(let i=0;i<24;i++){const particle=new THREE.Mesh(particleGeometry,i<12?calciumMaterial:transmitterMaterial);this.signalParticles.push(particle);this.scene.add(particle);}
  }
  makeGate(id:string,z:number,color:number,text:string){
   const gate=new THREE.Group();gate.position.z=z;this.scene.add(gate);this.objects.set(id,gate);
@@ -168,6 +175,7 @@ export class DiveEngine {
   const signal=this.abort.signal,canvas=this.renderer.domElement;
   window.addEventListener('keydown',e=>{
    if((e.target as HTMLElement)?.matches('input,textarea,select'))return;
+   if(this.model.phase!=='playing'||(e.code==='Space'&&(e.target as HTMLElement)?.closest('button,a,summary')))return;
    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft'].includes(e.code)){if(this.model.phase==='playing')e.preventDefault();this.keys.add(e.code);}
    if(e.code==='KeyE'&&!e.repeat)this.model.interact();
    if(e.code==='Escape'&&this.model.phase==='playing')this.pause();
@@ -189,8 +197,9 @@ export class DiveEngine {
   const release=()=>{this.drag=null;};canvas.addEventListener('pointerup',release,{signal});canvas.addEventListener('pointercancel',release,{signal});
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();this.pause();if(!this.disposed)this.onError('3D描画が中断された。再読み込みして再開できる。');},{signal});
  }
- start(capture=false){this.model.start();if(capture)this.captureMouse();this.emit();}
+ start(){this.model.start();this.emit();}
  captureMouse(){
+  if(this.model.phase!=='playing')return;
   const canvas=this.renderer.domElement;canvas.focus();
   try{const result=canvas.requestPointerLock?.();if(result&&typeof result.catch==='function')void result.catch(()=>this.model.tell('ドラッグで視点を動かせるよ。'));}
   catch{this.model.tell('ドラッグで視点を動かせるよ。');}
@@ -198,6 +207,8 @@ export class DiveEngine {
  pause(){this.model.pause();this.keys.clear();this.drag=null;if(document.pointerLockElement===this.renderer.domElement)document.exitPointerLock();this.emit();}
  resume(capture=false){this.keys.clear();this.model.resume();if(capture)this.captureMouse();this.emit();}
  interact(){const ok=this.model.interact();this.emit();return ok;}
+ answerLesson(choice:number){const ok=this.model.answerLesson(choice);this.emit();return ok;}
+ continueLesson(){this.keys.clear();const ok=this.model.continueLesson();if(this.model.phase==='playing')this.renderer.domElement.focus();this.emit();return ok;}
  jump(){if(this.model.phase==='playing')this.model.tick(.001,{forward:0,strafe:0,jump:true,sprint:false});this.emit();}
  turn(degrees:number){this.model.player.yaw+=degrees*Math.PI/180;this.emit();}
  step(direction:string){void this.move(direction,.23);}
@@ -238,9 +249,20 @@ export class DiveEngine {
    const gate=this.objects.get(id)!;for(const c of gate.children)if(c.name==='barrier'||c.name==='beam')c.visible=!open;
   }
   this.objects.get('calcium')!.visible=!this.model.calcium;this.objects.get('release')!.visible=!this.model.released;
+  const target=this.model.target();
+  this.guideMarker!.visible=this.model.phase==='playing';
+  this.guideMarker!.position.set(target.x,3.7+Math.sin(time*2)*.12,target.z);
+  this.signalWave!.visible=this.model.phase==='playing'&&this.model.stage==='axon'&&this.model.pulse>0;
+  this.signalWave!.position.z=(this.model.nodes?NODES[this.model.nodes-1]:-10)-(1.8-this.model.pulse)*7;
+  for(let i=0;i<this.signalParticles.length;i++){
+   const particle=this.signalParticles[i],t=(time*.35+(i%12)/12)%1;
+   particle.visible=this.model.phase==='playing'&&(i<12?this.model.calcium&&!this.model.released:this.model.released);
+   if(i<12)particle.position.set(-3+3*t,1.3+Math.sin(t*Math.PI)*.6,-64-7*t);
+   else particle.position.set(RECEPTORS[this.model.receptor].x*t+Math.sin(i*2+t*8)*.55,1.5+Math.sin(i+t*6)*.45,-71-15*t);
+  }
   this.light.color.set(this.model.released?0xffc1e0:0x96fce7);this.light.intensity=4+this.model.pulse*2;
   if(this.model.score>this.lastScore){this.lastScore=this.model.score;this.soundEffect();}
-  if(this.model.phase==='complete'&&document.pointerLockElement===this.renderer.domElement)document.exitPointerLock();
+  if(this.model.phase!=='playing'){this.keys.clear();this.drag=null;if(document.pointerLockElement===this.renderer.domElement)document.exitPointerLock();}
   this.renderer.render(this.scene,this.camera);
   if(this.command&&(performance.now()>=this.command.end||this.model.phase!=='playing')){const command=this.command;this.command=null;this.emit();command.resolve(this.model.snapshot());}
   if(++this.tickCount%8===0)this.emit();
