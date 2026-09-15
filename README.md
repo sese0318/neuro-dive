@@ -2,7 +2,19 @@
 
 NeuroLabの脳科学入門ゲーム。脳の地図、シグナル・リレー、記憶のペアの3モードを、時間制限なしで遊べる。
 
-[NEURO DIVE 一人称3D版](http://localhost:3217/dive) では、入力を集めて発火し、軸索を進んで次の神経細胞へ信号を届ける。樹状突起の庭、軸索の回廊、シナプスの岸の3エリアがある、約5分の探索アクション。
+[NEURO DIVE 一人称3D版](https://neuro-dive.vercel.app/dive) では、入力を集めて発火し、軸索を進んで次の神経細胞へ信号を届ける。樹状突起の庭、軸索の回廊、シナプスの岸の3エリアがある、初心者向け約8分の探索アクション。
+
+## 公開と更新
+
+[公開ゲーム](https://neuro-dive.vercel.app/dive) はログイン不要。PCの起動状態に関係なく遊べる。[2D版](https://neuro-dive.vercel.app/) も公開している。コードは [GitHubの非公開リポジトリ](https://github.com/sese0318/neuro-dive) に保存。
+
+Vercelは `vercel.json` に従い、`npm ci` と `npm run build` を実行して `dist/client` を配信する。Node.jsは22系。更新後は検証し、GitHubのmainへpushしてから、認証済みのPowerShellで次を実行する。
+
+```powershell
+npx.cmd --yes vercel@59.17.0 deploy --prod --yes
+```
+
+GitHubとVercelの自動連携はリポジトリへのアクセス権不足で未接続。pushだけでは公開版は更新されない。`.env*` と `.vercel` はGit管理しない。
 
 ## 起動
 
@@ -97,7 +109,7 @@ node --experimental-strip-types --test test/dive-state.test.mjs
 
 13件すべて成功。導入と理解チェックの進行制御、誤答と正解、再回答による重複得点防止、説明の持続、やり直しの初期化と案内方向も含む。発火条件、順序、不応期、落下復帰、ジャンプ、一時停止、化学伝達、床下からの操作禁止、近い受容体の選択、カプセルの説明と重複得点を検証する。
 
-現在はローカルで遊べる。Sitesの外部公開は未実施。
+2026-09-14にVercel本番公開。13件のテスト、型チェック、ローカルとVercelのビルドに成功。公開URLと3DモデルはHTTP 200。公開ブラウザーで導入、移動、入力回収と膜電位の説明を確認し、警告とエラーは0件。今回の公開版では全章の再走破は省略した。
 
 ### 初心者向け学習体験の検証
 
